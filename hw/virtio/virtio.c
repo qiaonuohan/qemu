@@ -605,8 +605,9 @@ void virtio_config_writeb(VirtIODevice *vdev, uint32_t addr, uint32_t data)
 
     stb_p(vdev->config + addr, val);
 
-    if (vdev->set_config)
+    if (vdev->set_config && (addr == 5 || strcmp(vdev->name, "virtio-net"))) {
         vdev->set_config(vdev, vdev->config);
+    }
 }
 
 void virtio_config_writew(VirtIODevice *vdev, uint32_t addr, uint32_t data)
