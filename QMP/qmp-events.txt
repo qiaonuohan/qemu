@@ -172,6 +172,25 @@ Data:
   },
   "timestamp": { "seconds": 1265044230, "microseconds": 450486 } }
 
+NIC_RX_FILTER_CHANGED
+-----------------
+
+Emitted when rx-filter configuration of nic is changed by the guest.
+Each nic has a flag to control event emit, the flag is set to false
+when it emits one event of the nic, the flag is set to true when
+management queries the rx-filter of the nic. This is used to avoid
+events flooding.
+
+Data:
+
+- "name": net client name (json-string)
+
+{ "event": "NIC_RX_FILTER_CHANGED",
+  "data": { "name": "vnet0",
+            "path": "/machine/peripheral/vnet0/virtio-backend" },
+  "timestamp": { "seconds": 1368697518, "microseconds": 326866 } }
+}
+
 RESET
 -----
 

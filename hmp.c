@@ -653,6 +653,54 @@ void hmp_info_tpm(Monitor *mon, const QDict *qdict)
     qapi_free_TPMInfoList(info_list);
 }
 
+static void strlist_printf(Monitor *mon, strList *entry)
+{
+    while (entry) {
+        monitor_printf(mon, "    %s\n", entry->value);
+        entry = entry->next;
+    }
+}
+
+void hmp_info_rx_filter(Monitor *mon, const QDict *qdict)
+{
+    RxFilterInfoList *filter_list, *entry;
+    bool has_name = qdict_haskey(qdict, "name");
+    const char *name = NULL;
+    Error *errp = NULL;
+
+    if (has_name) {
+        name = qdict_get_str(qdict, "name");
+    }
+
+    filter_list = entry = qmp_query_rx_filter(has_name, name, &errp);
+    hmp_handle_error(mon, &errp);
+
+    while (entry) {
+        monitor_printf(mon, "%s:\n", entry->value->name);
+        monitor_printf(mon, " \\ promiscuous: %s\n",
+                       entry->value->promiscuous ? "on" : "off");
+        monitor_printf(mon, " \\ multicast: %s\n",
+                       RxState_lookup[entry->value->multicast]);
+        monitor_printf(mon, " \\ unicast: %s\n",
+                       RxState_lookup[entry->value->unicast]);
+        monitor_printf(mon, " \\ broadcast-allowed: %s\n",
+                       entry->value->broadcast_allowed ? "on" : "off");
+        monitor_printf(mon, " \\ multicast-overflow: %s\n",
+                       entry->value->multicast_overflow ? "on" : "off");
+        monitor_printf(mon, " \\ unicast-overflow: %s\n",
+                       entry->value->unicast_overflow ? "on" : "off");
+        monitor_printf(mon, " \\ main-mac: %s\n", entry->value->main_mac);
+
+        monitor_printf(mon, " \\ unicast-table:\n");
+        strlist_printf(mon, entry->value->unicast_table);
+        monitor_printf(mon, " \\ multicast-table:\n");
+        strlist_printf(mon, entry->value->multicast_table);
+
+        entry = entry->next;
+    }
+    qapi_free_RxFilterInfoList(filter_list);
+}
+
 void hmp_quit(Monitor *mon, const QDict *qdict)
 {
     monitor_suspend(mon);

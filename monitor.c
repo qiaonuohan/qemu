@@ -490,6 +490,7 @@ static const char *monitor_event_names[] = {
     [QEVENT_BLOCK_JOB_READY] = "BLOCK_JOB_READY",
     [QEVENT_DEVICE_DELETED] = "DEVICE_DELETED",
     [QEVENT_DEVICE_TRAY_MOVED] = "DEVICE_TRAY_MOVED",
+    [QEVENT_NIC_RX_FILTER_CHANGED] = "NIC_RX_FILTER_CHANGED",
     [QEVENT_SUSPEND] = "SUSPEND",
     [QEVENT_SUSPEND_DISK] = "SUSPEND_DISK",
     [QEVENT_WAKEUP] = "WAKEUP",
@@ -2761,6 +2762,14 @@ static mon_cmd_t info_cmds[] = {
         .params     = "",
         .help       = "show the TPM device",
         .mhandler.cmd = hmp_info_tpm,
+    },
+    {
+        .name       = "rx-filter",
+        .args_type  = "name:s?",
+        .params     = "[net client name]",
+        .help       = "show the rx-filter information for all nics (or"
+                      " for the given nic)",
+        .mhandler.cmd = hmp_info_rx_filter,
     },
     {
         .name       = NULL,
