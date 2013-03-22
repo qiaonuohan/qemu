@@ -3619,3 +3619,60 @@
             '*cpuid-input-ecx': 'int',
             'cpuid-register': 'X86CPURegister32',
             'features': 'int' } }
+
+# @MacTableInfo:
+#
+# Rx-mode information of mac-table for a net client.
+#
+# @name: the net client name
+#
+# @promisc: #optional promiscuous mode (default: false)
+#
+# @allmulti: #optional all multicast mode (default: false)
+#
+# @alluni: #optional all unicast mode (default: false)
+#
+# @nomulti: #optional no multicast mode (default: false)
+#
+# @nouni: #optional no unicast mode (default: false)
+#
+# @nobcast: #optional no broadcast mode (default: false)
+#
+# @multi_overflow: #optional multicast overflow mode (default: false)
+#
+# @uni_overflow: #optional unicast overflow mode (default: false)
+#
+# @unicast: #optional a list of unicast macaddr string
+#
+# @multicast: #optional a list of multicast macaddr string
+#
+# Since 1.6
+##
+{ 'type': 'MacTableInfo',
+  'data': {
+    'name':            'str',
+    '*promisc':        'bool',
+    '*allmulti':       'bool',
+    '*alluni':         'bool',
+    '*nomulti':        'bool',
+    '*nouni':          'bool',
+    '*nobcast':        'bool',
+    '*multi-overflow': 'bool',
+    '*uni-overflow':   'bool',
+    '*unicast':        ['str'],
+    '*multicast':      ['str'] }}
+
+##
+# @query-mac-table:
+#
+# Return mac-table information for all nics (or for the given nic).
+#
+# @name: #optional net client name
+#
+# Returns: list of @MacTableInfo for all nics (or for the given nic).
+#          Returns an error if the given @name doesn't exist.
+#
+# Since: 1.6
+##
+{ 'command': 'query-mac-table', 'data': { '*name': 'str' },
+  'returns': ['MacTableInfo'] }

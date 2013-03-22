@@ -961,6 +961,44 @@ void print_net_client(Monitor *mon, NetClientState *nc)
                    nc->info_str);
 }
 
+MacTableInfoList *qmp_query_mac_table(bool has_name, const char *name,
+                                      Error **errp)
+{
+    NetClientState *nc;
+    MacTableInfoList *table_list = NULL, *last_entry = NULL;
+
+    QTAILQ_FOREACH(nc, &net_clients, next) {
+        MacTableInfoList *entry;
+        MacTableInfo *info;
+
+        if (nc->info->type != NET_CLIENT_OPTIONS_KIND_NIC) {
+            continue;
+        }
+        if (has_name && strcmp(nc->name, name) != 0) {
+            continue;
+        }
+
+        if (nc->info->query_mac_table) {
+            info = nc->info->query_mac_table(nc);
+            entry = g_malloc0(sizeof(*entry));
+            entry->value = info;
+
+            if (!table_list) {
+                table_list = entry;
+            } else {
+                last_entry->next = entry;
+            }
+            last_entry = entry;
+        }
+    }
+
+    if (table_list == NULL) {
+        error_setg(errp, "invalid net client name: %s", name);
+    }
+
+    return table_list;
+}
+
 void do_info_network(Monitor *mon, const QDict *qdict)
 {
     NetClientState *nc, *peer;

@@ -49,6 +49,7 @@ typedef ssize_t (NetReceiveIOV)(NetClientState *, const struct iovec *, int);
 typedef void (NetCleanup) (NetClientState *);
 typedef void (LinkStatusChanged)(NetClientState *);
 typedef void (NetClientDestructor)(NetClientState *);
+typedef MacTableInfo *(QueryMacTable)(NetClientState *);
 
 typedef struct NetClientInfo {
     NetClientOptionsKind type;
@@ -59,6 +60,7 @@ typedef struct NetClientInfo {
     NetCanReceive *can_receive;
     NetCleanup *cleanup;
     LinkStatusChanged *link_status_changed;
+    QueryMacTable *query_mac_table;
     NetPoll *poll;
 } NetClientInfo;
 

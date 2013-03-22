@@ -1639,6 +1639,8 @@ show qdev device model list
 show roms
 @item info tpm
 show the TPM device
+@item info mac-table [net client name]
+show the mac-table information for all nics (or for the given nic)
 @end table
 ETEXI
 

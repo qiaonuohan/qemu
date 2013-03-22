@@ -2932,3 +2932,56 @@ Example:
 <- { "return": {} }
 
 EQMP
+    {
+        .name       = "query-mac-table",
+        .args_type  = "name:s?",
+        .mhandler.cmd_new = qmp_marshal_input_query_mac_table,
+    },
+
+SQMP
+query-mac-table
+---------------
+
+Show mac-table information.
+
+Returns a json-array of mac-table information for all nics (or for the
+given nic), returning an error if the given nic doesn't exist.
+
+Each array entry contains the following:
+
+- "name": net client name (jaso-string)
+- "promisc": promiscuous mode (json-bool, optional)
+- "allmulti": all multicast mode (json-bool, optional)
+- "alluni": all unicast mode (json-bool, optional)
+- "nomulti":no multicast mode (json-bool, optional)
+- "nouni": no unicast mode (json-bool, optional)
+- "nobcast": no broadcast mode (json-bool, optional)
+- "multi-overflow": multicast overflow mode (json-bool, optional)
+- "uni-overflow": unicast overflow mode (json-bool, optional)
+- "unicast": a jason-array of unicast macaddr string (optional)
+- "multicast": a jason-array of multicast macaddr string (optional)
+
+Example:
+
+-> { "execute": "query-mac-table", "arguments": { "name": "vnet0" }}
+<- { "return": [
+        {
+            "multi-overflow": false,
+            "name": "vnet0",
+            "uni-overflow": false,
+            "nobcast": false,
+            "promisc": true,
+            "multicast": [
+                "01:00:5e:00:00:01",
+                "33:33:00:00:00:01",
+                "33:33:ff:12:34:56"
+            ],
+            "nouni": false,
+            "nomulti": false,
+            "allmulti": false,
+            "alluni": false
+        }
+      ]
+   }
+
+EQMP
