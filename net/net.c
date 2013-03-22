@@ -964,6 +964,29 @@ void print_net_client(Monitor *mon, NetClientState *nc)
                    nc->info_str);
 }
 
+MacTableInfoList *qmp_query_mac_table(Error **errp)
+{
+    NetClientState *nc;
+    MacTableInfoList *table_list = NULL;
+
+    QTAILQ_FOREACH(nc, &net_clients, next) {
+        MacTableInfoList *entry;
+        MacTableInfo *info;
+
+        if (nc->info->type != NET_CLIENT_OPTIONS_KIND_NIC) {
+            continue;
+        }
+        if (nc->info->query_mac_table) {
+            info = nc->info->query_mac_table(nc);
+            entry = g_malloc0(sizeof(*entry));
+            entry->value = info;
+            entry->next = table_list;
+            table_list = entry;
+        }
+    }
+    return table_list;
+}
+
 void do_info_network(Monitor *mon, const QDict *qdict)
 {
     NetClientState *nc, *peer;

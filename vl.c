@@ -2281,6 +2281,7 @@ static int device_init_func(QemuOpts *opts, void *opaque)
     DeviceState *dev;
 
     dev = qdev_device_add(opts);
+    printf("1111 qdev->id: %s\n", dev->id);
     if (!dev)
         return -1;
     object_unref(OBJECT(dev));
@@ -4279,7 +4280,8 @@ int main(int argc, char **argv, char **envp)
     /* init generic devices */
     if (qemu_opts_foreach(qemu_find_opts("device"), device_init_func, NULL, 1) != 0)
         exit(1);
-
+///////////////////////////////////////////
+    printf("hello\n");
     net_check_clients();
 
     ds = init_displaystate();

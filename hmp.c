@@ -653,6 +653,79 @@ void hmp_info_tpm(Monitor *mon, const QDict *qdict)
     qapi_free_TPMInfoList(info_list);
 }
 
+void hmp_info_mac_table(Monitor *mon, const QDict *qdict)
+{
+    MacTableInfoList *table_list, *table_entry;
+    strList *str_entry;
+    const char *name = NULL;
+    int has_name = qdict_haskey(qdict, "name");
+
+    if (has_name) {
+        monitor_printf(mon, "name: %s\n", name);
+        name = qdict_get_str(qdict, "name");
+    }
+    table_list = qmp_query_mac_table(NULL);
+    table_entry = table_list;
+    while (table_entry) {
+        if (has_name && strcmp(table_entry->value->name, name) != 0) {
+            table_entry = table_entry->next;
+            continue;
+        }
+        monitor_printf(mon, "%s:\n", table_entry->value->name);
+        if (table_entry->value->has_promisc) {
+            monitor_printf(mon, " \\ promisc: %s\n",
+                           table_entry->value->promisc ? "on" : "off");
+        }
+        if (table_entry->value->has_allmulti) {
+            monitor_printf(mon, " \\ allmulti: %s\n",
+                           table_entry->value->allmulti ? "on" : "off");
+        }
+        if (table_entry->value->has_alluni) {
+            monitor_printf(mon, " \\ alluni: %s\n",
+                           table_entry->value->alluni ? "on" : "off");
+        }
+        if (table_entry->value->has_nomulti) {
+            monitor_printf(mon, " \\ nomulti: %s\n",
+                           table_entry->value->nomulti ? "on" : "off");
+        }
+        if (table_entry->value->has_nouni) {
+            monitor_printf(mon, " \\ nouni: %s\n",
+                           table_entry->value->nouni ? "on" : "off");
+        }
+        if (table_entry->value->has_nobcast) {
+            monitor_printf(mon, " \\ nobcast: %s\n",
+                           table_entry->value->nobcast ? "on" : "off");
+        }
+        if (table_entry->value->has_multi_overflow) {
+            monitor_printf(mon, " \\ multi_overflow: %s\n",
+                           table_entry->value->multi_overflow ? "on" : "off");
+        }
+        if (table_entry->value->has_uni_overflow) {
+            monitor_printf(mon, " \\ uni_overflow: %s\n",
+                           table_entry->value->uni_overflow ? "on" : "off");
+        }
+        if (table_entry->value->has_unicast) {
+            str_entry = table_entry->value->unicast;
+            monitor_printf(mon, " \\ unicast:\n");
+            while (str_entry) {
+                monitor_printf(mon, "    %s\n", str_entry->value);
+                str_entry = str_entry->next;
+            }
+        }
+
+        if (table_entry->value->has_multicast) {
+            str_entry = table_entry->value->multicast;
+            monitor_printf(mon, " \\ multicast:\n");
+            while (str_entry) {
+                monitor_printf(mon, "    %s\n", str_entry->value);
+                str_entry = str_entry->next;
+            }
+        }
+        table_entry = table_entry->next;
+    }
+    qapi_free_MacTableInfoList(table_list);
+}
+
 void hmp_quit(Monitor *mon, const QDict *qdict)
 {
     monitor_suspend(mon);

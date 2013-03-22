@@ -924,6 +924,7 @@ void virtio_init(VirtIODevice *vdev, const char *name,
                  uint16_t device_id, size_t config_size)
 {
     int i;
+
     vdev->device_id = device_id;
     vdev->status = 0;
     vdev->isr = 0;

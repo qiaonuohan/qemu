@@ -192,6 +192,68 @@ static void virtio_net_set_link_status(NetClientState *nc)
     virtio_net_set_status(vdev, vdev->status);
 }
 
+static MacTableInfo *virtio_net_query_mactable(NetClientState *nc)
+{
+    VirtIONet *n = qemu_get_nic_opaque(nc);
+    MacTableInfo *info;
+    strList *str_list = NULL;
+    strList *entry;
+    int i;
+
+    info = g_malloc0(sizeof(*info));
+    info->name = g_strdup(nc->name);
+
+    info->promisc = n->promisc;
+    info->has_promisc = true;
+    info->allmulti = n->allmulti;
+    info->has_allmulti = true;
+    info->alluni = n->alluni;
+    info->has_alluni = true;
+    info->nomulti = n->nomulti;
+    info->has_nomulti = true;
+    info->nouni = n->nouni;
+    info->has_nouni = true;
+    info->nobcast = n->nobcast;
+    info->has_nobcast = true;
+    info->multi_overflow = n->mac_table.multi_overflow;
+    info->has_multi_overflow = true;
+    info->uni_overflow = n->mac_table.uni_overflow;
+    info->has_uni_overflow = true;
+
+    for (i = 0; i < n->mac_table.first_multi; i++) {
+        info->has_unicast = true;
+        entry = g_malloc0(sizeof(*entry));
+        entry->value = g_strdup_printf("%.2x:%.2x:%.2x:%.2x:%.2x:%.2x",
+				n->mac_table.macs[i * ETH_ALEN],
+				n->mac_table.macs[i * ETH_ALEN + 1],
+				n->mac_table.macs[i * ETH_ALEN + 2],
+				n->mac_table.macs[i * ETH_ALEN + 3],
+				n->mac_table.macs[i * ETH_ALEN + 4],
+				n->mac_table.macs[i * ETH_ALEN + 5]);
+        entry->next = str_list;
+        str_list = entry;
+    }
+    info->unicast = str_list;
+
+    str_list = NULL;
+    for (i = n->mac_table.first_multi; i < n->mac_table.in_use; i++) {
+        info->has_multicast = true;
+        entry = g_malloc0(sizeof(*entry));
+        entry->value = g_strdup_printf("%.2x:%.2x:%.2x:%.2x:%.2x:%.2x",
+				n->mac_table.macs[i * ETH_ALEN],
+				n->mac_table.macs[i * ETH_ALEN + 1],
+				n->mac_table.macs[i * ETH_ALEN + 2],
+				n->mac_table.macs[i * ETH_ALEN + 3],
+				n->mac_table.macs[i * ETH_ALEN + 4],
+				n->mac_table.macs[i * ETH_ALEN + 5]);
+        entry->next = str_list;
+        str_list = entry;
+    }
+    info->multicast = str_list;
+
+    return info;
+}
+
 static void virtio_net_reset(VirtIODevice *vdev)
 {
     VirtIONet *n = VIRTIO_NET(vdev);
@@ -1242,6 +1304,7 @@ static NetClientInfo net_virtio_info = {
     .receive = virtio_net_receive,
         .cleanup = virtio_net_cleanup,
     .link_status_changed = virtio_net_set_link_status,
+    .query_mac_table = virtio_net_query_mactable,
 };
 
 static bool virtio_net_guest_notifier_pending(VirtIODevice *vdev, int idx)
@@ -1321,7 +1384,8 @@ static int virtio_net_device_init(VirtIODevice *vdev)
     qemu_macaddr_default_if_unset(&n->nic_conf.macaddr);
     memcpy(&n->mac[0], &n->nic_conf.macaddr, sizeof(n->mac));
     n->status = VIRTIO_NET_S_LINK_UP;
-
+////////////////////////////////////////////////////
+    printf("qdev->id: %s\n", qdev->id);
     n->nic = qemu_new_nic(&net_virtio_info, &n->nic_conf,
                           object_get_typename(OBJECT(qdev)), qdev->id, n);
     peer_test_vnet_hdr(n);

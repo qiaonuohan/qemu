@@ -476,14 +476,18 @@ DeviceState *qdev_device_add(QemuOpts *opts)
     if (id) {
         qdev->id = id;
     }
+    printf("................... %s\n", qdev->id);
     if (qemu_opt_foreach(opts, set_property, qdev, 1) != 0) {
         qdev_free(qdev);
         return NULL;
     }
     if (qdev->id) {
+	    printf("....if\n");
+    printf("add-----%s\n", qdev->id);
         object_property_add_child(qdev_get_peripheral(), qdev->id,
                                   OBJECT(qdev), NULL);
     } else {
+	    printf("....else");
         static int anon_count;
         gchar *name = g_strdup_printf("device[%d]", anon_count++);
         object_property_add_child(qdev_get_peripheral_anon(), name,
@@ -495,6 +499,7 @@ DeviceState *qdev_device_add(QemuOpts *opts)
         return NULL;
     }
     qdev->opts = opts;
+    printf("................... %s\n", qdev->id);
     return qdev;
 }
 
@@ -603,6 +608,8 @@ int do_device_add(Monitor *mon, const QDict *qdict, QObject **ret_data)
         return 0;
     }
     dev = qdev_device_add(opts);
+    printf("0000 qdev->id: %s\n", dev->id);
+
     if (!dev) {
         qemu_opts_del(opts);
         return -1;

@@ -3505,3 +3505,56 @@
     '*asl_compiler_rev':  'uint32',
     '*file':              'str',
     '*data':              'str' }}
+
+# @MacTableInfo:
+#
+# Mac table information.
+#
+# @name: the name of nic device
+#
+# @promisc: #optional
+#
+# @allmulti: #optional
+#
+# @alluni: #optional
+#
+# @nomulti: #optional
+#
+# @nouni: #optional
+#
+# @nobcast: #optional
+#
+# @multi_overflow: #optional
+#
+# @uni_overflow: #optional
+#
+# @unicast: #optional a list of unicast mac strings
+#
+# @multicast: #optional a list of multicast mac strings
+#
+# Since 1.5
+##
+{ 'type': 'MacTableInfo',
+  'data': {
+    'name':            'str',
+    '*promisc':        'bool',
+    '*allmulti':       'bool',
+    '*alluni':         'bool',
+    '*nomulti':        'bool',
+    '*nouni':          'bool',
+    '*nobcast':        'bool',
+    '*multi-overflow': 'bool',
+    '*uni-overflow':   'bool',
+    '*unicast':        ['str'],
+    '*multicast':      ['str'] }}
+
+##
+# @query-mac-table:
+#
+# Return mac tables information of nic devices
+#
+# Returns: @MacTableInfo on success
+#
+# Since: 1.5
+##
+{ 'command': 'query-mac-table', 'returns': ['MacTableInfo'] }

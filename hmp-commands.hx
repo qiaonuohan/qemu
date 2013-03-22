@@ -1643,6 +1643,8 @@ show qdev device model list
 show roms
 @item info tpm
 show the TPM device
+@item info mac_table
+show the mac tables of nic devices
 @end table
 ETEXI
 

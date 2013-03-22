@@ -2862,3 +2862,60 @@ Example:
 <- { "return": {} }
 
 EQMP
+    {
+        .name       = "query-mac-table",
+        .args_type  = "name:s?",
+        .mhandler.cmd_new = qmp_marshal_input_query_mac_table,
+    },
+
+SQMP
+query-mac-table
+---------------------
+
+Show mac tables of nic devices
+
+Returns a json-object, it's a list of mac tables, one mac table contains
+"name", "unicast", "multicast". "name" is a json-str, "unicast" and "multicast"
+are all a list that contains some mac strings.
+........... flags.............
+
+Example:
+
+-> { "execute": "query-mac-table"}
+<- { "return": [
+        {
+            "name": "virtio-net-pci.0",
+            "uni_overflow": false,
+            "nobcast": false,
+            "promisc": false,
+            "multicast": [
+                "01:00:5e:00:00:01",
+                "33:33:00:00:00:01",
+                "33:33:ff:12:34:57"
+            ],
+            "nouni": false,
+            "nomulti": false,
+            "allmulti": false,
+            "multi_overflow": false,
+            "alluni": false
+        },
+        {
+            "name": "virtio-net-pci.0",
+            "uni_overflow": false,
+            "nobcast": false,
+            "promisc": false,
+            "multicast": [
+                "01:00:5e:00:00:01",
+                "33:33:00:00:00:01",
+                "33:33:ff:12:34:56"
+            ],
+            "nouni": false,
+            "nomulti": false,
+            "allmulti": false,
+            "multi_overflow": false,
+            "alluni": false
+        }
+    ]
+}
+
+EQMP

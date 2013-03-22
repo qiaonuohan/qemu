@@ -2765,6 +2765,13 @@ static mon_cmd_t info_cmds[] = {
         .mhandler.cmd = hmp_info_tpm,
     },
     {
+        .name       = "mac_table",
+        .args_type  = "name:s?",
+        .params     = "[nic name]",
+        .help       = "show the mac tables",
+        .mhandler.cmd = hmp_info_mac_table,
+    },
+    {
         .name       = NULL,
     },
 };
