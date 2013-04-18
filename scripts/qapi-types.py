@@ -276,6 +276,14 @@ fdecl.write(mcgen('''
 #include <stdbool.h>
 #include <stdint.h>
 
+#ifndef QGA_QAPI_TYPES_H
+typedef struct strList
+{
+  char *value;
+  struct strList *next;
+} strList;
+#endif
+
 ''',
                   guard=guardname(h_file)))
 

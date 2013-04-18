@@ -257,6 +257,28 @@ void visit_type_str(Visitor *v, char **obj, const char *name, Error **errp)
     }
 }
 
+void visit_type_strList(Visitor *m, strList ** obj, const char *name, Error **errp)
+{
+    GenericList *i, **prev = (GenericList **)obj;
+    Error *err = NULL;
+
+    if (!error_is_set(errp)) {
+        visit_start_list(m, name, &err);
+        if (!err) {
+            for (; (i = visit_next_list(m, prev, &err)) != NULL; prev = &i) {
+                strList *native_i = (strList *)i;
+                visit_type_str(m, &native_i->value, NULL, &err);
+            }
+            error_propagate(errp, err);
+            err = NULL;
+
+            /* Always call end_list if start_list succeeded.  */
+            visit_end_list(m, &err);
+        }
+        error_propagate(errp, err);
+    }
+}
+
 void visit_type_number(Visitor *v, double *obj, const char *name, Error **errp)
 {
     if (!error_is_set(errp)) {

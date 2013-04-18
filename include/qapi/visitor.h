@@ -50,6 +50,7 @@ void visit_type_int64(Visitor *v, int64_t *obj, const char *name, Error **errp);
 void visit_type_size(Visitor *v, uint64_t *obj, const char *name, Error **errp);
 void visit_type_bool(Visitor *v, bool *obj, const char *name, Error **errp);
 void visit_type_str(Visitor *v, char **obj, const char *name, Error **errp);
+void visit_type_strList(Visitor *m, strList ** obj, const char *name, Error **errp);
 void visit_type_number(Visitor *v, double *obj, const char *name, Error **errp);
 
 #endif
