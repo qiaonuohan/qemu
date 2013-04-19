@@ -557,7 +557,9 @@ STEXI
 
 Send @var{keys} to the guest. @var{keys} could be the name of the
 key or the raw value in hexadecimal format. Use @code{-} to press
-several keys simultaneously. Example:
+several keys simultaneously. The default hold time is 100, in the
+hold time, qemu will intervally send down events to guest, the
+interval is 100ms. Example:
 @example
 sendkey ctrl-alt-f1
 @end example

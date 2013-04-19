@@ -348,7 +348,8 @@ Arguments:
 keys array:
     - "key": key sequence (a json-array of key enum values)
 
-- hold-time: time to delay key up events, milliseconds. Defaults to 100
+- hold-time: time to intervally send down events to guest, the interval
+             is 100ms. Defaults to 100 milliseconds
              (json-int, optional)
 
 Example:
