@@ -23,6 +23,24 @@
 #include "qapi/qmp-output-visitor.h"
 #include "qapi/string-input-visitor.h"
 #include "qapi/string-output-visitor.h"
+#include "qapi-types.h"
+#include "qapi-visit.h"
+
+enum PrimitiveTypeKind {
+    PTYPE_STRING = 0,
+    PTYPE_BOOLEAN,
+    PTYPE_NUMBER,
+    PTYPE_INTEGER,
+    PTYPE_U8,
+    PTYPE_U16,
+    PTYPE_U32,
+    PTYPE_U64,
+    PTYPE_S8,
+    PTYPE_S16,
+    PTYPE_S32,
+    PTYPE_S64,
+    PTYPE_EOL,
+};
 
 typedef struct PrimitiveType {
     union {
@@ -40,23 +58,20 @@ typedef struct PrimitiveType {
         int64_t s64;
         intmax_t max;
     } value;
-    enum {
-        PTYPE_STRING = 0,
-        PTYPE_BOOLEAN,
-        PTYPE_NUMBER,
-        PTYPE_INTEGER,
-        PTYPE_U8,
-        PTYPE_U16,
-        PTYPE_U32,
-        PTYPE_U64,
-        PTYPE_S8,
-        PTYPE_S16,
-        PTYPE_S32,
-        PTYPE_S64,
-        PTYPE_EOL,
-    } type;
+    enum PrimitiveTypeKind type;
     const char *description;
 } PrimitiveType;
+
+typedef struct PrimitiveList {
+    union {
+        strList *strings;
+        boolList *booleans;
+        numberList *numbers;
+        intList *integers;
+    } value;
+    enum PrimitiveTypeKind type;
+    const char *description;
+} PrimitiveList;
 
 /* test helpers */
 
@@ -101,6 +116,27 @@ static void visit_primitive_type(Visitor *v, void **native, Error **errp)
         visit_type_int64(v, &pt->value.s64, NULL, errp);
         break;
     case PTYPE_EOL:
+        g_assert(false);
+    }
+}
+
+static void visit_primitive_list(Visitor *v, void **native, Error **errp)
+{
+    PrimitiveList *pl = *native;
+    switch (pl->type) {
+    case PTYPE_STRING:
+        visit_type_strList(v, &pl->value.strings, NULL, errp);
+        break;
+    case PTYPE_BOOLEAN:
+        visit_type_boolList(v, &pl->value.booleans, NULL, errp);
+        break;
+    case PTYPE_NUMBER:
+        visit_type_numberList(v, &pl->value.numbers, NULL, errp);
+        break;
+    case PTYPE_INTEGER:
+        visit_type_intList(v, &pl->value.integers, NULL, errp);
+        break;
+    default:
         g_assert(false);
     }
 }
@@ -212,6 +248,7 @@ typedef enum VisitorCapabilities {
     VCAP_PRIMITIVES = 1,
     VCAP_STRUCTURES = 2,
     VCAP_LISTS = 4,
+    VCAP_PRIMITIVE_LISTS = 8,
 } VisitorCapabilities;
 
 typedef struct SerializeOps {
@@ -277,6 +314,146 @@ static void test_primitives(gconstpointer opaque)
     ops->cleanup(serialize_data);
     g_free(args);
     g_free(pt_copy);
+}
+
+static void test_primitive_lists(gconstpointer opaque)
+{
+    TestArgs *args = (TestArgs *) opaque;
+    const SerializeOps *ops = args->ops;
+    PrimitiveType *pt = args->test_data;
+    PrimitiveList pl = { .value = { 0 } };
+    PrimitiveList pl_copy = { .value = { 0 } };
+    PrimitiveType *pt_copy = g_malloc0(sizeof(*pt_copy));
+    PrimitiveList *pl_copy_ptr = &pl_copy;
+    Error *err = NULL;
+    void *serialize_data;
+    void *cur_head = NULL;
+    int i;
+
+    pl.type = pl_copy.type = pt->type;
+
+    for (i = 0; i < 32; i++) {
+        switch (pl.type) {
+        case PTYPE_STRING: {
+            strList *tmp = g_new0(strList, 1);
+            tmp->value = g_strdup(pt->value.string);
+            if (pl.value.strings == NULL) {
+                pl.value.strings = tmp;
+            } else {
+                tmp->next = pl.value.strings;
+                pl.value.strings = tmp;
+            }
+            break;
+        }
+        case PTYPE_INTEGER: {
+            intList *tmp = g_new0(intList, 1);
+            tmp->value = pt->value.integer;
+            if (pl.value.integers == NULL) {
+                pl.value.integers = tmp;
+            } else {
+                tmp->next = pl.value.integers;
+                pl.value.integers = tmp;
+            }
+            break;
+        }
+        case PTYPE_NUMBER: {
+            numberList *tmp = g_new0(numberList, 1);
+            tmp->value = pt->value.number;
+            if (pl.value.numbers == NULL) {
+                pl.value.numbers = tmp;
+            } else {
+                tmp->next = pl.value.numbers;
+                pl.value.numbers = tmp;
+            }
+            break;
+        }
+        case PTYPE_BOOLEAN: {
+            boolList *tmp = g_new0(boolList, 1);
+            tmp->value = pt->value.boolean;
+            if (pl.value.booleans == NULL) {
+                pl.value.booleans = tmp;
+            } else {
+                tmp->next = pl.value.booleans;
+                pl.value.booleans = tmp;
+            }
+            break;
+        }
+        default:
+            g_assert(0);
+        }
+    }
+
+    ops->serialize((void **)&pl, &serialize_data, visit_primitive_list, &err);
+    ops->deserialize((void **)&pl_copy_ptr, serialize_data, visit_primitive_list, &err);
+
+    g_assert(err == NULL);
+    i = 0;
+
+    do {
+        switch (pl_copy.type) {
+        case PTYPE_STRING: {
+            strList *ptr;
+            if (cur_head) {
+                ptr = cur_head;
+                cur_head = ptr->next;
+            } else {
+                cur_head = ptr = pl_copy.value.strings;
+            }
+            g_assert_cmpstr(pt->value.string, ==, ptr->value);
+            break;
+        }
+        case PTYPE_INTEGER: {
+            intList *ptr;
+            if (cur_head) {
+                ptr = cur_head;
+                cur_head = ptr->next;
+            } else {
+                cur_head = ptr = pl_copy.value.integers;
+            }
+            g_assert_cmpint(pt->value.integer, ==, ptr->value);
+            break;
+        }
+        case PTYPE_NUMBER: {
+            numberList *ptr;
+            char *double1, *double2;
+            if (cur_head) {
+                ptr = cur_head;
+                cur_head = ptr->next;
+            } else {
+                cur_head = ptr = pl_copy.value.numbers;
+            }
+            /* we serialize with %f for our reference visitors, so rather than
+             * fuzzy * floating math to test "equality", just compare the
+             * formatted values
+             */
+            double1 = g_malloc0(calc_float_string_storage(pt->value.number));
+            double2 = g_malloc0(calc_float_string_storage(ptr->value));
+            g_assert_cmpstr(double1, ==, double2);
+            g_free(double1);
+            g_free(double2);
+            break;
+        }
+        case PTYPE_BOOLEAN: {
+            boolList *ptr;
+            if (cur_head) {
+                ptr = cur_head;
+                cur_head = ptr->next;
+            } else {
+                cur_head = ptr = pl_copy.value.booleans;
+            }
+            g_assert_cmpint(!!pt->value.boolean, ==, !!ptr->value);
+            break;
+        }
+        default:
+            g_assert(0);
+        }
+        i++;
+    } while (cur_head);
+
+    g_assert_cmpint(i, ==, 33);
+
+    ops->cleanup(serialize_data);
+    g_free(args);
 }
 
 static void test_struct(gconstpointer opaque)
@@ -363,11 +540,13 @@ static void test_nested_struct_list(gconstpointer opaque)
 
 PrimitiveType pt_values[] = {
     /* string tests */
+#if 0
     {
         .description = "string_empty",
         .type = PTYPE_STRING,
         .value.string = "",
     },
+#endif
     {
         .description = "string_whitespace",
         .type = PTYPE_STRING,
@@ -728,7 +907,8 @@ static const SerializeOps visitors[] = {
         .serialize = qmp_serialize,
         .deserialize = qmp_deserialize,
         .cleanup = qmp_cleanup,
-        .caps = VCAP_PRIMITIVES | VCAP_STRUCTURES | VCAP_LISTS
+        .caps = VCAP_PRIMITIVES | VCAP_STRUCTURES | VCAP_LISTS |
+                VCAP_PRIMITIVE_LISTS
     },
     {
         .type = "String",
@@ -781,6 +961,24 @@ static void add_visitor_type(const SerializeOps *ops)
         args->ops = ops;
         args->test_data = NULL;
         g_test_add_data_func(testname, args, test_nested_struct_list);
+    }
+
+    if (ops->caps & VCAP_PRIMITIVE_LISTS) {
+        i = 0;
+        while (pt_values[i].type != PTYPE_EOL) {
+            if (pt_values[i].type == PTYPE_STRING
+                || pt_values[i].type == PTYPE_NUMBER
+                || pt_values[i].type == PTYPE_BOOLEAN
+                || pt_values[i].type == PTYPE_INTEGER) {
+                sprintf(testname, "%s/primitive_list/%s", testname_prefix,
+                        pt_values[i].description);
+                args = g_malloc0(sizeof(*args));
+                args->ops = ops;
+                args->test_data = &pt_values[i];
+                g_test_add_data_func(testname, args, test_primitive_lists);
+            }
+            i++;
+        }
     }
 }
 
