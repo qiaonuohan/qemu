@@ -16,7 +16,18 @@ import os
 import getopt
 import errno
 
-def generate_fwd_struct(name, members):
+def generate_fwd_struct(name, members, builtin_type=False):
+    if builtin_type:
+        return mcgen('''
+typedef struct %(name)sList
+{
+    %(type)s value;
+    struct %(name)sList *next;
+} %(name)sList;
+''',
+                     type=c_type(name),
+                     name=name)
+
     return mcgen('''
 typedef struct %(name)s %(name)s;
 
@@ -27,6 +38,7 @@ typedef struct %(name)sList
 } %(name)sList;
 ''',
                  name=name)
+
 
 def generate_fwd_enum_struct(name, members):
     return mcgen('''
@@ -184,8 +196,9 @@ void qapi_free_%(type)s(%(c_type)s obj)
 
 
 try:
-    opts, args = getopt.gnu_getopt(sys.argv[1:], "chp:o:",
-                                   ["source", "header", "prefix=", "output-dir="])
+    opts, args = getopt.gnu_getopt(sys.argv[1:], "chbp:o:",
+                                   ["source", "header", "builtins",
+                                    "prefix=", "output-dir="])
 except getopt.GetoptError, err:
     print str(err)
     sys.exit(1)
@@ -197,6 +210,7 @@ h_file = 'qapi-types.h'
 
 do_c = False
 do_h = False
+do_builtins = False
 
 for o, a in opts:
     if o in ("-p", "--prefix"):
@@ -207,6 +221,8 @@ for o, a in opts:
         do_c = True
     elif o in ("-h", "--header"):
         do_h = True
+    elif o in ("-b", "--builtins"):
+        do_builtins = True
 
 if not do_c and not do_h:
     do_c = True
@@ -282,6 +298,12 @@ fdecl.write(mcgen('''
 exprs = parse_schema(sys.stdin)
 exprs = filter(lambda expr: not expr.has_key('gen'), exprs)
 
+if do_builtins:
+    fdecl.write(guardstart("QAPI_TYPES_BUILTIN_STRUCT_DECL"))
+    for typename in builtin_types:
+        fdecl.write(generate_fwd_struct(typename, None, builtin_type=True))
+    fdecl.write(guardend("QAPI_TYPES_BUILTIN_STRUCT_DECL"))
+
 for expr in exprs:
     ret = "\n"
     if expr.has_key('type'):
@@ -297,6 +319,15 @@ for expr in exprs:
     else:
         continue
     fdecl.write(ret)
+
+if do_builtins:
+    fdecl.write(guardstart("QAPI_TYPES_BUILTIN_CLEANUP_DECL"))
+    fdef.write(guardstart("QAPI_TYPES_BUILTIN_CLEANUP_DEF"))
+    for typename in builtin_types:
+        fdecl.write(generate_type_cleanup_decl(typename + "List"))
+        fdef.write(generate_type_cleanup(typename + "List"))
+    fdecl.write(guardend("QAPI_TYPES_BUILTIN_CLEANUP_DECL"))
+    fdef.write(guardend("QAPI_TYPES_BUILTIN_CLEANUP_DEF"))
 
 for expr in exprs:
     ret = "\n"

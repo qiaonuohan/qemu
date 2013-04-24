@@ -11,6 +11,10 @@
 
 from ordereddict import OrderedDict
 
+builtin_types = [
+    'str', 'int', 'number', 'bool'
+]
+
 def tokenize(data):
     while len(data):
         ch = data[0]
@@ -242,3 +246,16 @@ def guardname(filename):
     for substr in [".", " ", "-"]:
         guard = guard.replace(substr, "_")
     return guard.upper() + '_H'
+
+def guardstart(name):
+    return mcgen('''
+#ifndef %(name)s
+#define %(name)s
+''',
+                 name=guardname(name))
+
+def guardend(name):
+    return mcgen('''
+#endif /* %(name)s */
+''',
+                 name=guardname(name))
