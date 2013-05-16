@@ -154,6 +154,20 @@ Data:
             "path": "/machine/peripheral/virtio-net-pci-0" },
   "timestamp": { "seconds": 1265044230, "microseconds": 450486 } }
 
+MAC_TABLE_CHANGED
+-----------------
+
+Emitted mac-table configuration is changed by the guest.
+
+Data:
+
+- "name": net client name (json-string)
+
+{ "event": "MAC_TABLE_CHANGED",
+  "data": { "name": "vnet0" },
+  "timestamp": { "seconds": 1368697518, "microseconds": 326866 }}
+}
+
 DEVICE_TRAY_MOVED
 -----------------
 

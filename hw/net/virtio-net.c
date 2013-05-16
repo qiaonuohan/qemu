@@ -21,6 +21,8 @@
 #include "hw/virtio/virtio-net.h"
 #include "net/vhost_net.h"
 #include "hw/virtio/virtio-bus.h"
+#include "qapi/qmp/qjson.h"
+#include "monitor/monitor.h"
 
 #define VIRTIO_NET_VM_VERSION    11
 
@@ -395,6 +397,7 @@ static int virtio_net_handle_rx_mode(VirtIONet *n, uint8_t cmd,
 {
     uint8_t on;
     size_t s;
+    QObject *event_data;
 
     s = iov_to_buf(iov, iov_cnt, 0, &on, sizeof(on));
     if (s != sizeof(on)) {
@@ -417,6 +420,10 @@ static int virtio_net_handle_rx_mode(VirtIONet *n, uint8_t cmd,
         return VIRTIO_NET_ERR;
     }
 
+    event_data = qobject_from_jsonf("{ 'name': %s }", n->netclient_name);
+    monitor_protocol_event(QEVENT_MAC_TABLE_CHANGED, event_data);
+    qobject_decref(event_data);
+
     return VIRTIO_NET_OK;
 }
 
@@ -425,6 +432,7 @@ static int virtio_net_handle_mac(VirtIONet *n, uint8_t cmd,
 {
     struct virtio_net_ctrl_mac mac_data;
     size_t s;
+    QObject *event_data;
 
     if (cmd == VIRTIO_NET_CTRL_MAC_ADDR_SET) {
         if (iov_size(iov, iov_cnt) != sizeof(n->mac)) {
@@ -496,6 +504,10 @@ static int virtio_net_handle_mac(VirtIONet *n, uint8_t cmd,
     } else {
         n->mac_table.multi_overflow = 1;
     }
+
+    event_data = qobject_from_jsonf("{ 'name': %s }", n->netclient_name);
+    monitor_protocol_event(QEVENT_MAC_TABLE_CHANGED, event_data);
+    qobject_decref(event_data);
 
     return VIRTIO_NET_OK;
 }
