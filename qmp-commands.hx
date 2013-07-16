@@ -3237,6 +3237,43 @@ Example:
             "broadcast-allowed": false
         }
       ]
+
+EQMP
+    {
+        .name       = "query-qmp-schema",
+        .args_type  = "",
+        .mhandler.cmd_new = qmp_marshal_input_query_qmp_schema,
+    },
+
+
+SQMP
+query-qmp-schema
+----------------
+
+query qmp schema information
+
+Return a json-object with the following information:
+
+- "name": qmp schema name (json-string)
+- "type": qmp schema type, it can be 'comand', 'type', 'enum', 'union', 'event'
+- "data": schema data (json-object, optional)
+- "returns": return data of qmp command (json-object, optional)
+
+Example:
+
+-> { "execute": "query-qmp-schema" }
+<- { "return": [
+       {
+           "name": "query-name",
+           "type": "Command",
+           "returns": [
+               {
+                    "key": "*name",
+                   "type": "str"
+               }
+           ]
+       }
+     ]
    }
 
 EQMP

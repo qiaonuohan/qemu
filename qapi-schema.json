@@ -4235,3 +4235,58 @@
 # Since: 1.7
 ##
 { 'command': 'blockdev-add', 'data': { 'options': 'BlockdevOptions' } }
+
+######################################################
+{ 'type': 'DataObjectBase',
+  'data': { '*name': 'str', 'type': 'str' } }
+
+{ 'union': 'DataObjectMemberType',
+  'discriminator': {},
+  'data': { 'reference': 'str',
+            'undefined': 'DataObject',
+            'extend': 'DataObject' } }
+
+#{ 'type': 'DataObjectMemberTypeEntryArray',
+#  'data': {
+#      'data': [ 'DataObjectMemberTypeEntry' ] } }
+#
+#{ 'union': 'DataObjectMemberType',
+#  'discriminator': {},
+#  'data': {
+#      'array': 'DataObjectMemberTypeEntryArray',
+#      'single': 'DataObjectMemberTypeEntry' } }
+
+{ 'type': 'DataObjectMember',
+  'data': { 'type': 'DataObjectMemberType', '*name': 'str',
+            '*optional': 'bool', '*recursive': 'bool' } }
+
+{ 'type': 'DataObjectCommand',
+  'data': { '*data': [ 'DataObjectMember' ],
+            '*returns': 'DataObject',
+            '*gen': 'bool' } }
+
+{ 'type': 'DataObjectEnumeration',
+  'data': { 'data': [ 'str' ] } }
+
+{ 'type': 'DataObjectType',
+  'data': { 'data': [ 'DataObjectMember' ] } }
+
+{ 'type': 'DataObjectUndefinedStruct',
+  'data': { 'data': [ 'DataObjectMember' ] } }
+
+{ 'type': 'DataObjectUnion',
+  'data': { 'data': [ 'DataObjectMember' ], '*base': 'str',
+            '*discriminator': 'str' } }
+
+{ 'union': 'DataObject',
+  'base': 'DataObjectBase',
+  'discriminator': 'type',
+  'data': {
+    'command': 'DataObjectCommand',
+    'enumeration': 'DataObjectEnumeration',
+    'type': 'DataObjectType',
+    'undefined-struct': 'DataObjectUndefinedStruct',
+    'reference-type': 'String',
+    'unionobj': 'DataObjectUnion' } }
+
+{ 'command': 'query-qmp-schema', 'returns': ['DataObject'] }

@@ -1,0 +1,162 @@
+= full introspection support for QMP =
+
+== Purpose ==
+
+Add a new interface to provide QMP schema information to management,
+it returns a dynamical and nested dict/list, which contain the useful
+metadata to help management to check supported features, QMP commands
+detail, etc.
+
+== Usage ==
+
+Execute QMP command:
+
+  { "execute": "query-qmp-schema" }
+
+Returns:
+
+  { "return": [
+      {
+          "name": "query-name",
+          "type": "command",
+          "returns": {
+              "name": "NameInfo",
+              "type": "type",
+              "data": [
+                  {
+                      "name": "name",
+                      "optional": true,
+                      "recursive": false,
+                      "type": "str"
+                  }
+              ]
+          }
+      },
+      ...
+   }
+
+The whole schema information will be returned in one go, it contains
+all kinds of schema struct. It doesn't support to be filtered by type
+or name.
+
+== avoid dead loop in recursive extending ==
+
+We have four types (ImageInfo, BlockStats, PciDeviceInfo, SchemaData)
+that uses themself in their own define data directly or indirectly,
+we will not repeatedly extend them to avoid dead loop.
+
+We use a string to record the visit path, type index of each node
+will be saved to the string, indexes are split by ':'.
+Push index to visit_path_str before extending, and pop index from
+visit_path_str after extending.
+
+If the type was already extended in parent node, we don't extend it
+again to avoid dead loop.
+
+== more description of 'DataObject' type ==
+
+Currently we have schema difinition for type, command, enumeration,
+union. When we define some new struct to describe all the schema
+definition, we also need to describe native type and arbitrary
+dictionary/list/string. Here we use 'DataObject" union.
+
+'DataObject' itself is a arbitrary and nested dictionary, the
+dictionary has three keys ('key', 'type', 'data'), 'key' and
+'data' are optional.
+
+* For describing Dictionary, we set the key to 'key', and set the
+  value to 'type'
+* For describing List, we don't set 'key', just set the value to
+  'type'
+* If the value of dictionary or list is non-native type, we extend
+  the non-native type to dictionary, set it to 'data',  and set the
+  non-native type's name to 'type'.
+* If the value of dictionary or list is dictionary or list, 'type'
+  won't be set.
+
+== examples ==
+
+1) Dict, value is native type
+{ 'id': 'str', ... }
+--------------------
+[
+    {
+        "key": "id",
+        "type": "str"
+    },
+    .....
+]
+
+2) Dict, value is defined types
+{ 'options': 'TpmTypeOptions' }
+-------------------------------
+[
+    {
+        "key": "options",
+        "type": "TpmTypeOptions",
+        "data": [
+            {
+                "key": "passthrough",
+                "type": "str",
+            }
+        ]
+    },
+    .....
+]
+
+3) List, value is native type
+['str', ... ]
+-------------
+[
+    {
+        "type": "str"
+    },
+    ....
+]
+
+4) List, value is defined types
+['TpmTypeOptions', ... ]
+------------------------
+[
+    {
+        "type": "TpmTypeOptions",
+        "data": [
+            {
+                "key": "passthrough",
+                "type": "str",
+            }
+        ]
+    },
+    .....
+]
+
+5) Dict, value is dictionary
+{ 'info': { 'age': 'init', ... } }
+-----------------------------
+[
+    {
+        "key": "info",
+        "data": [
+            {
+                "key": "age",
+                "type": "init",
+            },
+            ...
+        ]
+    },
+]
+
+6) Dict, value is list
+{ 'info': [ 'str', ... } }
+-----------------------------
+[
+    {
+        "key": "info",
+        "data": [
+            {
+                "type": "str",
+            },
+            ...
+        ]
+    },
+]
