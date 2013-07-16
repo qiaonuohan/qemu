@@ -440,7 +440,7 @@ except os.error, e:
     if e.errno != errno.EEXIST:
         raise
 
-exprs = parse_schema(sys.stdin)
+exprs = parse_schema(sys.stdin)[0]
 commands = filter(lambda expr: expr.has_key('command'), exprs)
 commands = filter(lambda expr: not expr.has_key('gen'), commands)
 

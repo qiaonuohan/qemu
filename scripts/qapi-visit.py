@@ -480,7 +480,7 @@ fdecl.write(mcgen('''
 ''',
                   prefix=prefix, guard=guardname(h_file)))
 
-exprs = parse_schema(sys.stdin)
+exprs = parse_schema(sys.stdin)[0]
 
 # to avoid header dependency hell, we always generate declarations
 # for built-in types in our header files and simply guard them

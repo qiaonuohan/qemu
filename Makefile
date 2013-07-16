@@ -45,7 +45,7 @@ endif
 endif
 
 GENERATED_HEADERS = config-host.h qemu-options.def
-GENERATED_HEADERS += qmp-commands.h qapi-types.h qapi-visit.h
+GENERATED_HEADERS += qmp-commands.h qapi-types.h qapi-visit.h qmp-schema.h
 GENERATED_SOURCES += qmp-marshal.c qapi-types.c qapi-visit.c
 
 GENERATED_HEADERS += trace/generated-events.h
@@ -229,6 +229,9 @@ $(SRC_PATH)/qapi-schema.json $(SRC_PATH)/scripts/qapi-visit.py $(qapi-py)
 qmp-commands.h qmp-marshal.c :\
 $(SRC_PATH)/qapi-schema.json $(SRC_PATH)/scripts/qapi-commands.py $(qapi-py)
 	$(call quiet-command,$(PYTHON) $(SRC_PATH)/scripts/qapi-commands.py $(gen-out-type) -m -o "." < $<, "  GEN   $@")
+qmp-schema.h:\
+$(SRC_PATH)/qapi-schema.json $(SRC_PATH)/scripts/qapi-types.py $(qapi-py)
+	$(call quiet-command,$(PYTHON) $(SRC_PATH)/scripts/qapi-types.py $(gen-out-type) -o "." -s "$@" < $<, "  GEN   $@")
 
 QGALIB_GEN=$(addprefix qga/qapi-generated/, qga-qapi-types.h qga-qapi-visit.h qga-qmp-commands.h)
 $(qga-obj-y) qemu-ga.o: $(QGALIB_GEN)

@@ -61,10 +61,13 @@ class QAPISchema:
             self.src += '\n'
         self.cursor = 0
         self.exprs = []
+        self.raw_exprs = []
         self.accept()
 
         while self.tok != None:
-            self.exprs.append(self.get_expr(False))
+            self.cur_entry= ''
+            self.exprs.append(self.get_expr(False, True))
+            self.raw_exprs.append(self.cur_entry)
 
     def accept(self):
         while True:
@@ -103,9 +106,11 @@ class QAPISchema:
             elif not self.tok.isspace():
                 raise QAPISchemaError(self, 'Stray "%s"' % self.tok)
 
-    def get_members(self):
+    def get_members(self, start=None):
         expr = OrderedDict()
         if self.tok == '}':
+            if start != None:
+                self.cur_entry = self.src[start:self.cursor]
             self.accept()
             return expr
         if self.tok != "'":
@@ -118,6 +123,8 @@ class QAPISchema:
             self.accept()
             expr[key] = self.get_expr(True)
             if self.tok == '}':
+                if start != None:
+                    self.cur_entry = self.src[start:self.cursor]
                 self.accept()
                 return expr
             if self.tok != ',':
@@ -142,12 +149,15 @@ class QAPISchema:
                 raise QAPISchemaError(self, 'Expected "," or "]"')
             self.accept()
 
-    def get_expr(self, nested):
+    def get_expr(self, nested, first=False):
         if self.tok != '{' and not nested:
             raise QAPISchemaError(self, 'Expected "{"')
         if self.tok == '{':
+            start = None
+            if first:
+                start = self.cursor - 1
             self.accept()
-            expr = self.get_members()
+            expr = self.get_members(start)
         elif self.tok == '[':
             self.accept()
             expr = self.get_values()
@@ -174,7 +184,7 @@ def parse_schema(fp):
         elif expr.has_key('type'):
             add_struct(expr)
 
-    return schema.exprs
+    return schema.exprs, schema.raw_exprs
 
 def parse_args(typeinfo):
     if isinstance(typeinfo, basestring):

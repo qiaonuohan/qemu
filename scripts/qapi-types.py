@@ -15,6 +15,7 @@ import sys
 import os
 import getopt
 import errno
+import re
 
 def generate_fwd_struct(name, members, builtin_type=False):
     if builtin_type:
@@ -282,9 +283,10 @@ void qapi_free_%(type)s(%(c_type)s obj)
 
 
 try:
-    opts, args = getopt.gnu_getopt(sys.argv[1:], "chbp:o:",
+    opts, args = getopt.gnu_getopt(sys.argv[1:], "chbs:p:o:",
                                    ["source", "header", "builtins",
-                                    "prefix=", "output-dir="])
+                                    "schema-dump-file=", "prefix=",
+                                    "output-dir="])
 except getopt.GetoptError, err:
     print str(err)
     sys.exit(1)
@@ -293,6 +295,7 @@ output_dir = ""
 prefix = ""
 c_file = 'qapi-types.c'
 h_file = 'qapi-types.h'
+schema_dump_file = ""
 
 do_c = False
 do_h = False
@@ -309,10 +312,16 @@ for o, a in opts:
         do_h = True
     elif o in ("-b", "--builtins"):
         do_builtins = True
+    elif o in ("-s", "--schema-dump-file"):
+        schema_dump_file = a
 
 if not do_c and not do_h:
     do_c = True
     do_h = True
+
+if schema_dump_file:
+    do_c = False
+    do_h = False
 
 c_file = output_dir + prefix + c_file
 h_file = output_dir + prefix + h_file
@@ -381,7 +390,40 @@ fdecl.write(mcgen('''
 ''',
                   guard=guardname(h_file)))
 
-exprs = parse_schema(sys.stdin)
+exprs_all = parse_schema(sys.stdin)
+
+schema_table = """/* AUTOMATICALLY GENERATED, DO NOT MODIFY */
+
+/*
+ * Schema json string table converted from qapi-schema.json
+ *
+ * Copyright (c) 2013 Red Hat, Inc.
+ *
+ * Authors:
+ *  Amos Kong <akong@redhat.com>
+ *
+ * This work is licensed under the terms of the GNU LGPL, version 2.1 or later.
+ * See the COPYING.LIB file in the top-level directory.
+ *
+ */
+
+const char *const qmp_schema_table[] = {
+"""
+
+if schema_dump_file:
+    for line in exprs_all[1]:
+        line = re.sub(r'#.*\n', ' ', line.strip())
+        line = re.sub(r'\n', ' ', line.strip())
+        line = re.sub(r' +', ' ', line)
+        schema_table += '  "%s",\n' % (line)
+
+    schema_table += '  NULL };\n'
+    f = open(schema_dump_file, "w")
+    f.write(schema_table)
+    f.flush()
+    f.close()
+
+exprs = exprs_all[0]
 exprs = filter(lambda expr: not expr.has_key('gen'), exprs)
 
 fdecl.write(guardstart("QAPI_TYPES_BUILTIN_STRUCT_DECL"))
