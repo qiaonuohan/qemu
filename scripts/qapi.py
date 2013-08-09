@@ -165,8 +165,6 @@ def parse_schema(fp):
         print >>sys.stderr, e
         exit(1)
 
-    exprs = []
-
     for expr in schema.exprs:
         if expr.has_key('enum'):
             add_enum(expr['enum'])
@@ -175,9 +173,8 @@ def parse_schema(fp):
             add_enum('%sKind' % expr['union'])
         elif expr.has_key('type'):
             add_struct(expr)
-        exprs.append(expr)
 
-    return exprs
+    return schema.exprs
 
 def parse_args(typeinfo):
     if isinstance(typeinfo, basestring):
