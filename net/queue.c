@@ -24,6 +24,7 @@
 #include "net/queue.h"
 #include "qemu/queue.h"
 #include "net/net.h"
+#include "qemu/timer.h"
 
 /* The delivery handler may only return zero if it will call
  * qemu_net_queue_flush() when it determines that it is once again able
@@ -51,7 +52,9 @@ struct NetPacket {
 struct NetQueue {
     void *opaque;
     uint32_t nq_maxlen;
+    uint32_t maxsize;
     uint32_t nq_count;
+    uint32_t size_count;
 
     QTAILQ_HEAD(packets, NetPacket) packets;
 
@@ -67,6 +70,7 @@ NetQueue *qemu_new_net_queue(void *opaque)
     queue->opaque = opaque;
     queue->nq_maxlen = 10000;
     queue->nq_count = 0;
+    queue->size_count = 0;
 
     QTAILQ_INIT(&queue->packets);
 
@@ -96,7 +100,10 @@ static void qemu_net_queue_append(NetQueue *queue,
 {
     NetPacket *packet;
 
-    if (queue->nq_count >= queue->nq_maxlen && !sent_cb) {
+    if (queue->nq_count + 1 > queue->nq_maxlen && !sent_cb) {
+        return; /* drop if queue full and no callback */
+    }
+    if (queue->size_count + size > queue->maxsize && !sent_cb) {
         return; /* drop if queue full and no callback */
     }
     packet = g_malloc(sizeof(NetPacket) + size);
@@ -107,6 +114,7 @@ static void qemu_net_queue_append(NetQueue *queue,
     memcpy(packet->data, buf, size);
 
     queue->nq_count++;
+    queue->size_count += size;
     QTAILQ_INSERT_TAIL(&queue->packets, packet, entry);
 }
 
@@ -175,6 +183,26 @@ static ssize_t qemu_net_queue_deliver_iov(NetQueue *queue,
     return ret;
 }
 
+static void throttle_timer_cb(void *opaque)
+{
+    NetClientState *nc = opaque;
+
+    printf("%10s:  bps: %8.0f |  bps_rx: %8.0f |  bps_tx: %8.0f "
+           "|  pps:    %8.0f |  pps_rx: %8.0f |  pps_tx: %8.0f\n",
+           nc->name, nc->bps_count + nc->peer->bps_count,
+           nc->peer->bps_count, nc->bps_count,
+           nc->pps_count + nc->peer->pps_count,
+           nc->peer->pps_count, nc->pps_count);
+
+    timer_mod(nc->throttle_timer, qemu_clock_get_ns(QEMU_CLOCK_VIRTUAL) +
+              get_ticks_per_sec());
+
+    nc->pps_count = 0;
+    nc->peer->pps_count = 0;
+    nc->bps_count = 0;
+    nc->peer->bps_count = 0;
+}
+
 ssize_t qemu_net_queue_send(NetQueue *queue,
                             NetClientState *sender,
                             unsigned flags,
@@ -183,6 +211,33 @@ ssize_t qemu_net_queue_send(NetQueue *queue,
                             NetPacketSent *sent_cb)
 {
     ssize_t ret;
+
+    /* set the rate limit */
+    if (sender->pps_limit) {
+        queue->nq_maxlen = sender->pps_limit * 2;
+    } else if (sender->bps_limit) {
+        queue->maxsize = sender->bps_limit * 2;
+    }
+
+    if (!sender->throttle_timer && sender->info->type ==
+        NET_CLIENT_OPTIONS_KIND_NIC) {
+        sender->throttle_timer = timer_new_ns(QEMU_CLOCK_VIRTUAL,
+                                              throttle_timer_cb, sender);
+        timer_mod(sender->throttle_timer,
+                  qemu_clock_get_ns(QEMU_CLOCK_VIRTUAL) +
+                  get_ticks_per_sec());
+    }
+
+    /* throttling network I/O */
+    if ((sender->pps_limit && sender->pps_count + 1 > sender->pps_limit) ||
+        (sender->bps_limit &&  sender->bps_count + size > sender->bps_limit) ||
+        (sender->pps_total_limit && sender->peer->pps_count +
+         sender->pps_count + 1 > sender->pps_total_limit) ||
+        (sender->bps_total_limit && sender->peer->bps_count +
+         sender->bps_count + size > sender->bps_total_limit)) {
+        qemu_net_queue_append(queue, sender, flags, data, size, sent_cb);
+        return size;
+    }
 
     if (queue->delivering || !qemu_can_send_packet(sender)) {
         qemu_net_queue_append(queue, sender, flags, data, size, sent_cb);
@@ -194,8 +249,9 @@ ssize_t qemu_net_queue_send(NetQueue *queue,
         qemu_net_queue_append(queue, sender, flags, data, size, sent_cb);
         return 0;
     }
-
-    qemu_net_queue_flush(queue);
+    sender->pps_count++;
+    sender->bps_count += size;
+    qemu_net_queue_flush(queue, sender);
 
     return ret;
 }
@@ -209,6 +265,17 @@ ssize_t qemu_net_queue_send_iov(NetQueue *queue,
 {
     ssize_t ret;
 
+    if (!sender->throttle_timer && sender->info->type ==
+        NET_CLIENT_OPTIONS_KIND_NIC) {
+        sender->throttle_timer = timer_new_ns(QEMU_CLOCK_VIRTUAL,
+                                              throttle_timer_cb, sender);
+        timer_mod(sender->throttle_timer,
+                  qemu_clock_get_ns(QEMU_CLOCK_VIRTUAL) + get_ticks_per_sec());
+    }
+
+    /* throttling network I/O */
+    /* TODO: samiliar with qemu_net_queue_send()  */
+
     if (queue->delivering || !qemu_can_send_packet(sender)) {
         qemu_net_queue_append_iov(queue, sender, flags, iov, iovcnt, sent_cb);
         return 0;
@@ -220,7 +287,7 @@ ssize_t qemu_net_queue_send_iov(NetQueue *queue,
         return 0;
     }
 
-    qemu_net_queue_flush(queue);
+    qemu_net_queue_flush(queue, sender);
 
     return ret;
 }
@@ -233,20 +300,39 @@ void qemu_net_queue_purge(NetQueue *queue, NetClientState *from)
         if (packet->sender == from) {
             QTAILQ_REMOVE(&queue->packets, packet, entry);
             queue->nq_count--;
+            queue->size_count -= packet->size;
             g_free(packet);
         }
     }
 }
 
-bool qemu_net_queue_flush(NetQueue *queue)
+bool qemu_net_queue_flush(NetQueue *queue, NetClientState *sender)
 {
+    NetPacket *packet;
+
     while (!QTAILQ_EMPTY(&queue->packets)) {
-        NetPacket *packet;
         int ret;
 
         packet = QTAILQ_FIRST(&queue->packets);
         QTAILQ_REMOVE(&queue->packets, packet, entry);
         queue->nq_count--;
+        queue->size_count -= packet->size;
+
+        if (sender->pps_limit && sender->pps_count + 1 > sender->pps_limit) {
+            goto limit;
+        }
+        if (sender->pps_total_limit && sender->peer->pps_count +
+            sender->pps_count + 1 > sender->pps_total_limit) {
+            goto limit;
+        }
+        if (sender->bps_limit && sender->bps_count + packet->size >
+            sender->bps_limit) {
+            goto limit;
+        }
+        if (sender->bps_total_limit && sender->peer->bps_count +
+            sender->bps_count + packet->size > sender->bps_total_limit) {
+            goto limit;
+        }
 
         ret = qemu_net_queue_deliver(queue,
                                      packet->sender,
@@ -255,6 +341,7 @@ bool qemu_net_queue_flush(NetQueue *queue)
                                      packet->size);
         if (ret == 0) {
             queue->nq_count++;
+            queue->size_count += packet->size;
             QTAILQ_INSERT_HEAD(&queue->packets, packet, entry);
             return false;
         }
@@ -262,8 +349,16 @@ bool qemu_net_queue_flush(NetQueue *queue)
         if (packet->sent_cb) {
             packet->sent_cb(packet->sender, ret);
         }
+        sender->pps_count++;
+        sender->bps_count += packet->size;
 
         g_free(packet);
     }
+    return true;
+
+limit:
+    queue->nq_count++;
+    queue->size_count += packet->size;
+    QTAILQ_INSERT_HEAD(&queue->packets, packet, entry);
     return true;
 }

@@ -77,6 +77,13 @@ struct NetClientState {
     NetClientDestructor *destructor;
     unsigned int queue_index;
     unsigned rxfilter_notify_enabled:1;
+    double pps_count;
+    double bps_count;
+    QEMUTimer *throttle_timer;
+    double pps_limit;
+    double bps_limit;
+    double pps_total_limit;
+    double bps_total_limit;
 };
 
 typedef struct NICState {

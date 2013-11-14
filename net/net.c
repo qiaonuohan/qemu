@@ -444,7 +444,7 @@ void qemu_flush_queued_packets(NetClientState *nc)
         }
         return;
     }
-    if (qemu_net_queue_flush(nc->incoming_queue)) {
+    if (qemu_net_queue_flush(nc->incoming_queue, nc)) {
         /* We emptied the queue successfully, signal to the IO thread to repoll
          * the file descriptor (for tap, for example).
          */
