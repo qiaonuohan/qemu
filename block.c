@@ -2601,6 +2601,21 @@ err:
     return ret;
 }
 
+static void iops_timer_cb(void *opaque)
+{
+    BlockDriverState *bs = opaque;
+
+    printf("%10s: iops: %8.0f | iops_rd: %8.0f | iops_wr: %8.0f\n",
+           bs->device_name, bs->iops_count[0] + bs->iops_count[1],
+           bs->iops_count[0], bs->iops_count[1]);
+    timer_mod(bs->iops_timer, qemu_clock_get_ns(QEMU_CLOCK_VIRTUAL) +
+              get_ticks_per_sec());
+
+    /* clean iops_count */
+    bs->iops_count[0] = 0;
+    bs->iops_count[1] = 0;
+}
+
 /*
  * Handle a read request in coroutine context
  */
@@ -2631,8 +2646,19 @@ static int coroutine_fn bdrv_co_do_readv(BlockDriverState *bs,
     }
 
     /* throttling disk I/O */
+
+    if (bs->file && !bs->iops_timer) {
+        bs->iops_timer = timer_new_ns(QEMU_CLOCK_VIRTUAL, iops_timer_cb, bs);
+           timer_mod(bs->iops_timer, qemu_clock_get_ns(QEMU_CLOCK_VIRTUAL) +
+              get_ticks_per_sec());
+    }
+
     if (bs->io_limits_enabled) {
         bdrv_io_limits_intercept(bs, nb_sectors, false);
+    }
+
+    if (bs->file) {
+        bs->iops_count[0]++;
     }
 
     tracked_request_begin(&req, bs, sector_num, nb_sectors, false);
@@ -2764,11 +2790,20 @@ static int coroutine_fn bdrv_co_do_writev(BlockDriverState *bs,
         wait_for_overlapping_requests(bs, sector_num, nb_sectors);
     }
 
+    if (bs->file && !bs->iops_timer) {
+        bs->iops_timer = timer_new_ns(QEMU_CLOCK_VIRTUAL, iops_timer_cb, bs);
+           timer_mod(bs->iops_timer, qemu_clock_get_ns(QEMU_CLOCK_VIRTUAL) +
+              get_ticks_per_sec());
+    }
+
     /* throttling disk I/O */
     if (bs->io_limits_enabled) {
         bdrv_io_limits_intercept(bs, nb_sectors, true);
     }
 
+    if (bs->file) {
+        bs->iops_count[1]++;
+    }
     tracked_request_begin(&req, bs, sector_num, nb_sectors, true);
 
     ret = notifier_with_return_list_notify(&bs->before_write_notifiers, &req);
