@@ -2675,6 +2675,27 @@ EQMP
     },
 
 SQMP
+add-user
+----------
+
+- "name": user's name (json-string)
+- "age": user's age (json-int)
+
+Example:
+
+-> { "execute": "add-user", "arguments": { "name": "bob", "age": 28 } }
+<- { "return": {}}
+
+EQMP
+
+    {
+        .name       = "add-user",
+        .args_type  = "name:s,age:O",
+        .mhandler.cmd_new = qmp_marshal_input_add_user,
+    },
+
+
+SQMP
 query-uuid
 ----------
 

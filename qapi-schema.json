@@ -4232,3 +4232,9 @@
 # Since: 1.8
 ##
 { 'command': 'query-user', 'returns': ['UserInfo'] }
+
+##
+# @add-user
+#
+##
+{ 'command': 'add-user', 'data': 'UserInfo' }

@@ -658,6 +658,14 @@ int user_add_entry(const char *name, uint32_t age)
     return 0;
 }
 
+void qmp_add_user(bool has_index, uint32_t index, const char *name,
+                  uint32_t age, Error **errp)
+{
+    if (user_add_entry(name, age)) {
+        error_setg(errp, "reach to USER_NR_ENTRIES: %u", USER_NR_ENTRIES);
+    }
+}
+
 /* Calculates the limit to CPU APIC ID values
  *
  * This function returns the limit for the APIC ID value, so that all
