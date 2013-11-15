@@ -2651,6 +2651,30 @@ EQMP
     },
 
 SQMP
+query-user
+----------
+
+- "name": user's name (json-string)
+- "age": user's age (json-int)
+
+Example:
+
+-> { "execute": "query-user" }
+<- { "return": {
+        { "name": "jim", "age": 18 },
+        { "name": "bob", "age": 28 },
+     }
+   }
+
+EQMP
+
+    {
+        .name       = "query-user",
+        .args_type  = "",
+        .mhandler.cmd_new = qmp_marshal_input_query_user,
+    },
+
+SQMP
 query-uuid
 ----------
 

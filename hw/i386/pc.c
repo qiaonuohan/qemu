@@ -76,8 +76,10 @@
 #define FW_CFG_IRQ0_OVERRIDE (FW_CFG_ARCH_LOCAL + 2)
 #define FW_CFG_E820_TABLE (FW_CFG_ARCH_LOCAL + 3)
 #define FW_CFG_HPET (FW_CFG_ARCH_LOCAL + 4)
+#define FW_CFG_USER_TABLE (FW_CFG_ARCH_LOCAL + 5)
 
 #define E820_NR_ENTRIES		16
+#define USER_NR_ENTRIES         16
 
 struct e820_entry {
     uint64_t address;
@@ -93,6 +95,19 @@ struct e820_table {
 static struct e820_table e820_reserve;
 static struct e820_entry *e820_table;
 static unsigned e820_entries;
+
+struct user_entry {
+    char name[20];
+    uint32_t age;
+} QEMU_PACKED __attribute((__aligned__(4)));
+
+struct user_table {
+    uint32_t count;
+    struct user_entry entry[USER_NR_ENTRIES];
+} QEMU_PACKED __attribute((__aligned__(4)));
+
+static struct user_table user_table;
+
 struct hpet_fw_config hpet_cfg = {.count = UINT8_MAX};
 
 void gsi_handler(void *opaque, int n, int level)
@@ -607,6 +622,42 @@ int e820_add_entry(uint64_t address, uint64_t length, uint32_t type)
     return e820_entries;
 }
 
+UserInfoList *qmp_query_user(Error **errp)
+{
+    UserInfoList *users = NULL, * last_entry = NULL;
+    int i;
+
+    for (i = 0; i < USER_NR_ENTRIES; i++) {
+        users = g_malloc0(sizeof(users));
+        users->value = g_malloc0(sizeof(UserInfo *));
+        users->value->has_index = true;
+        users->value->index = i;
+        users->value->name = g_strdup(user_table.entry[i].name);
+        users->value->age = user_table.entry[i].age;
+        users->next = last_entry;
+        last_entry = users;
+    }
+
+    return users;
+}
+
+int user_add_entry(const char *name, uint32_t age)
+{
+    int index = le32_to_cpu(user_table.count);
+    struct user_entry *entry;
+
+    if (index + 1 > USER_NR_ENTRIES) {
+        return -1;
+    }
+    printf("add entry , index: %d, name: %s, age: %u\n", index, name, age);
+    entry = &user_table.entry[index++];
+    entry->age = age;
+    memcpy(entry->name, name, 20);
+    user_table.count = cpu_to_le32(index);
+
+    return 0;
+}
+
 /* Calculates the limit to CPU APIC ID values
  *
  * This function returns the limit for the APIC ID value, so that all
@@ -658,6 +709,11 @@ static FWCfgState *bochs_bios_init(void)
                      &e820_reserve, sizeof(e820_reserve));
     fw_cfg_add_file(fw_cfg, "etc/e820", e820_table,
                     sizeof(struct e820_entry) * e820_entries);
+
+    fw_cfg_add_bytes(fw_cfg, FW_CFG_USER_TABLE,
+                     &user_table, sizeof(user_table));
+    //fw_cfg_add_file(fw_cfg, "etc/user", user_table,
+    //                sizeof(struct user_entry) * user_MAX);
 
     fw_cfg_add_bytes(fw_cfg, FW_CFG_HPET, &hpet_cfg, sizeof(hpet_cfg));
     /* allocate memory for the NUMA channel: one (64bit) word for the number

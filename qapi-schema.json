@@ -4212,3 +4212,23 @@
 # Since: 1.7
 ##
 { 'command': 'blockdev-add', 'data': { 'options': 'BlockdevOptions' } }
+
+##
+# @UserInfo
+#
+# @name: user name
+# @age: user age
+#
+# Since: 1.8
+##
+{ 'type': 'UserInfo',
+  'data': { '*index': 'uint32','name': 'str', 'age': 'uint32' } }
+
+##
+# @query-user
+#
+# @return: UserInfo list
+#
+# Since: 1.8
+##
+{ 'command': 'query-user', 'returns': ['UserInfo'] }

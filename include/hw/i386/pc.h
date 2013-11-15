@@ -246,6 +246,7 @@ uint16_t pvpanic_port(void);
 #define E820_UNUSABLE   5
 
 int e820_add_entry(uint64_t, uint64_t, uint32_t);
+int user_add_entry(const char *, uint32_t);
 
 #define PC_COMPAT_1_6 \
         {\
