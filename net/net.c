@@ -1010,6 +1010,55 @@ RxFilterInfoList *qmp_query_rx_filter(bool has_name, const char *name,
     return filter_list;
 }
 
+void qmp_net_set_io_throttle(const char *device, int64_t bps, int64_t bps_rx,
+                             int64_t bps_tx, int64_t pps, int64_t pps_rx,
+                             int64_t pps_tx, Error **errp)
+{
+    NetClientState *nc;
+
+    QTAILQ_FOREACH(nc, &net_clients, next) {
+
+        if (device && strcmp(nc->name, device) != 0) {
+            continue;
+        }
+
+        if ((bps != 0 && (bps_rx != 0 || bps_tx != 0)) ||
+            (pps != 0 && (pps_rx != 0 || pps_tx != 0))) {
+            error_setg(errp, "bps/pps total value and rx/tx values"
+                             " cannot be used at the same time");
+            return;
+        }
+        if (bps < 0 || bps_rx < 0 || bps_tx < 0 || pps < 0 ||
+            pps_rx < 0 || pps_tx < 0) {
+            error_setg(errp, "bps/pps rx/tx/total values"
+                             " should be larger than 0");
+            return;
+        }
+
+        if (nc->info->type == NET_CLIENT_OPTIONS_KIND_NIC) {
+            nc->peer->bps_limit = bps_rx;
+            nc->peer->pps_limit = pps_rx;
+            nc->peer->bps_total_limit = bps;
+            nc->peer->pps_total_limit = pps;
+
+            nc->bps_limit = bps_tx;
+            nc->pps_limit = pps_tx;
+            nc->bps_total_limit = bps;
+            nc->pps_total_limit = pps;
+        } else {
+            nc->bps_limit = bps_rx;
+            nc->pps_limit = pps_rx;
+            nc->bps_total_limit = bps;
+            nc->pps_total_limit = pps;
+
+            nc->peer->bps_limit = bps_tx;
+            nc->peer->pps_limit = pps_tx;
+            nc->peer->bps_total_limit = bps;
+            nc->peer->pps_total_limit = pps;
+        }
+    }
+}
+
 void do_info_network(Monitor *mon, const QDict *qdict)
 {
     NetClientState *nc, *peer;

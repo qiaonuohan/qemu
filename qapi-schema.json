@@ -4212,3 +4212,25 @@
 # Since: 1.7
 ##
 { 'command': 'blockdev-add', 'data': { 'options': 'BlockdevOptions' } }
+
+##
+# @net_set_io_throttle:
+#
+# Change I/O throttle limits for a network drive.
+#
+# @device: network device name
+# @bps: total throughput limit in bytes per second
+# @bps_rx: receive throughput limit in bytes per second
+# @bps_tx: send throughput limit in bytes per second
+# @pps: total packet number per second
+# @pps_rx: receive packet nmber per second
+# @pps_tx: send packet number per second
+#
+# @return: none
+#
+# Since: 1.8
+##
+
+{ 'command': 'net_set_io_throttle',
+  'data': { 'device': 'str', 'bps': 'int', 'bps_rx': 'int', 'bps_tx': 'int',
+            'pps': 'int', 'pps_rx': 'int', 'pps_tx': 'int' } }

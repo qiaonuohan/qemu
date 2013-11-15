@@ -3295,3 +3295,40 @@ Example (2):
 <- { "return": {} }
 
 EQMP
+
+    {
+        .name       = "net_set_io_throttle",
+        .args_type  = "device:B,bps:l,bps_rx:l,bps_tx:l,pps:l,pps_rx:l,pps_tx:l",
+        .mhandler.cmd_new = qmp_marshal_input_net_set_io_throttle,
+    },
+
+SQMP
+net_set_io_throttle
+------------
+Change I/O throttle limits for a network drive.
+
+- "device": network device name (json-string)
+- "bps": total throughput limit in bytes per second (json-int)
+- "bps_rx": receive throughput limit in bytes per second (json-int)
+- "bps_tx": send throughput limit in bytes per second (json-int)
+- "pps": total packet number per second (json-int)
+- "pps_rx": receive packet nmber per second (json-int)
+- "pps_tx": send packet number per second (json-int)
+
+Example:
+
+-> { "execute": "net_set_io_throttle",
+     "arguments": {
+         "device": "e1000.0",
+         "bps": 0,
+         "bps_rx": 0,
+         "bps_tx": 1024,
+         "pps": 0,
+         "pps_rx": 0,
+         "pps_tx": 0
+     }
+   }
+
+<- { "return": {} }
+
+EQMP
