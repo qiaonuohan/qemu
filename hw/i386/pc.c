@@ -666,6 +666,20 @@ void qmp_add_user(bool has_index, uint32_t index, const char *name,
     }
 }
 
+void qmp_update_user(bool has_index, uint32_t index, const char *name,
+                     uint32_t age, Error **errp)
+{
+    int i;
+
+    for (i = 0; i < USER_NR_ENTRIES; i++) {
+        if (has_index && index == i) {
+            memcpy(user_table.entry[i].name, name, 20);
+            user_table.entry[i].age = age;
+            break;
+        }
+    }
+}
+
 /* Calculates the limit to CPU APIC ID values
  *
  * This function returns the limit for the APIC ID value, so that all

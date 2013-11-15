@@ -2694,6 +2694,26 @@ EQMP
         .mhandler.cmd_new = qmp_marshal_input_add_user,
     },
 
+SQMP
+update-user
+----------
+
+- "index": index of entry in table (json-int, optional)
+- "name": user's name (json-string)
+- "age": user's age (json-int)
+
+Example:
+
+-> { "execute": "update-user", "arguments": { "index": 0, "name": "bob", "age": 29 } }
+<- { "return": {}}
+
+EQMP
+
+    {
+        .name       = "update-user",
+        .args_type  = "index:i?,name:s,age:i",
+        .mhandler.cmd_new = qmp_marshal_input_update_user,
+    },
 
 SQMP
 query-uuid
