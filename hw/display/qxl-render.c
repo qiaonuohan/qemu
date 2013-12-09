@@ -32,8 +32,6 @@ static void qxl_blit(PCIQXLDevice *qxl, QXLRect *rect)
     if (is_buffer_shared(surface)) {
         return;
     }
-    trace_qxl_render_blit(qxl->guest_primary.qxl_stride,
-            rect->left, rect->right, rect->top, rect->bottom);
     src = qxl->guest_primary.data;
     if (qxl->guest_primary.qxl_stride < 0) {
         /* qxl surface is upside down, walk src scanlines
@@ -109,12 +107,6 @@ static void qxl_render_update_area_unlocked(PCIQXLDevice *qxl)
         }
         qxl_set_rect_to_surface(qxl, &qxl->dirty[0]);
         qxl->num_dirty_rects = 1;
-        trace_qxl_render_guest_primary_resized(
-               qxl->guest_primary.surface.width,
-               qxl->guest_primary.surface.height,
-               qxl->guest_primary.qxl_stride,
-               qxl->guest_primary.bytes_pp,
-               qxl->guest_primary.bits_pp);
         if (qxl->guest_primary.qxl_stride > 0) {
             surface = qemu_create_displaysurface_from
                 (qxl->guest_primary.surface.width,
@@ -187,7 +179,6 @@ void qxl_render_update_area_bh(void *opaque)
 void qxl_render_update_area_done(PCIQXLDevice *qxl, QXLCookie *cookie)
 {
     qemu_mutex_lock(&qxl->ssd.lock);
-    trace_qxl_render_update_area_done(cookie);
     qemu_bh_schedule(qxl->update_area_bh);
     qxl->render_update_cookie_num--;
     qemu_mutex_unlock(&qxl->ssd.lock);
